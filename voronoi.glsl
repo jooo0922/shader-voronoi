@@ -6,6 +6,16 @@ uniform vec2 u_resolution;
 uniform vec2 u_mouse;
 uniform float u_time;
 
+// for loop에서 인덱스값을 인자로 받아 
+// vec2 타입의 세포핵 좌표값을 랜덤으로 자동생성 해주는 랜덤함수
+vec2 random(float f) {
+  // x, y값은 우리가 이전 예제들에서 랜덤값 생성하는 공식과 동일한 걸 사용하면 됨.
+  float x = fract(sin(f * 1306.346) * 1652.12124);
+  float y = fract(cos(f * 2407.125) * 2105.12569);
+
+  return vec2(x, y); // 랜덤하게 생성된 세포핵 좌표값을 리턴해줌.
+}
+
 void main() {
   vec2 coord = gl_FragCoord.xy / u_resolution; // 각 픽셀들 좌표값 normalize
   coord.x *= u_resolution.x / u_resolution.y; // 캔버스를 resizing 해도 왜곡이 없도록 좌표값에 해상도비율값 곰해줌.
@@ -15,13 +25,21 @@ void main() {
   vec2 mouse = u_mouse / u_resolution; // 이 때, u_mouse는 normalize된 좌표값이 아니기 때문에, coord에 각 픽셀들 좌표값 계산할 때처럼 normalize를 해줌.
   mouse.x *= u_resolution.x / u_resolution.y; // 마찬가지로, 해상도비율값을 곱해줘서 resizing 해도 마우스 좌표값 왜곡이 없도록 함. 
 
-  const int num = 5; // 세포핵의 개수
+  // 세포핵 좌표값을 자동생성하도록 리팩토링 했으므로, num 값만 바꿔주면 알아서 해당 개수만큼 voronoi 다각형을 그려줌.
+  const int num = 10; // 세포핵의 개수 (int 타입이니까 5옆에 .(소수점) 을 안붙여도 됨.)
   vec2 cells[num]; // 세포핵 좌표값 vec2를 넣어줄 비어있는 vec2 배열을 생성함. 세포를 5개 그릴거니까 배열 길이도 5개로 함.
-  cells[0] = vec2(0.25, 0.7);
-  cells[1] = vec2(0.78, 0.28);
-  cells[2] = vec2(0.8, 0.71);
-  cells[3] = vec2(0.16, 0.22); // 4번째 세포핵 좌표값까지는 모두 임의의 위치값을 지정해놓음.
-  cells[4] = mouse; // 5번째 세포핵 좌표값은 마우스의 움직이는 좌표값으로 할당해주도록 함.
+
+  // 각 세포핵 좌표값을 자동생성 하도록 리팩토링 함.
+  // 세포핵 개수만큼 for loop를 돌면서 index 정수값을 실수로 변환하여 매개변수로 넣어주면 
+  // 랜덤한 vec2 값을 리턴받는 랜덤함수를 사용해서 자동생성 할거임.
+  for(int i = 0; i < num - 1; i++) { // 마지막 번째 세포핵 좌표값은 랜덤값을 받지 않을거니까 num - 1 까지만 반복해 줌.
+    // int 데이터인 인덱스값을 float 데이터로 변환한 후, 랜덤함수의 인자로 전달해 줌.
+    cells[i] = random(float(i));
+  }
+
+  // 마지막 번째 세포핵 좌표값은 랜덤함수로 리턴받는 게 아니라,
+  // 마우스의 움직이는 좌표값으로 할당해주도록 함.
+  cells[num - 1] = mouse; 
 
   /*
     아래에도 설명했다시피,
@@ -91,7 +109,11 @@ void main() {
   // abs()와 sin()을 이용해서 노이즈값에 추가적인 계산을 해준 뒤, 그걸 색상의 b값으로 사용하고,
   // 현재 픽셀과 가장 가까운 세포핵의 좌표값을 picked_cell에 넣어서 색상의 r, g 값으로 넣어주면
   // 뭔가 색깔이 있는 동심원 패턴이 추가됨.
-  vec3 col = vec3(picked_cell, abs(sin(md * 100.)));
+  // 여기에 플러스로,
+  // 각 세포핵 좌표값의 정확한 위치를 알고 싶다면, 
+  // md가 0.01보다 작은 경우, 즉 현재 픽셀과 각 세포핵과의 거리가 0.01보다 작다면
+  // white 컬러로 찍히게 해줘서, 각 세포핵 위치마다 반지름이 0.01인 point를 그려줄 수도 있음.
+  vec3 col = md < 0.01 ? vec3(1.) : vec3(picked_cell, abs(sin(md * 100.)));
 
   gl_FragColor = vec4(col, 1.);
 }
